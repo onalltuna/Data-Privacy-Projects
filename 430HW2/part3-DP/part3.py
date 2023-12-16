@@ -16,6 +16,7 @@ from numpy import sqrt, exp
 
 def read_dataset(file_path):
 
+    # Read the data set store in a list and return
     data_set = []
     data_set_row = []
 
@@ -40,25 +41,16 @@ def get_histogram(dataset, state='TX', year='2020'):
     dataset_to_use = dataset.copy()
     dataset_to_use2 = []
     return_list = []
-    # print("state: ", state)
 
+# select values according to the given state and year values
     for row in dataset_to_use:
         if row[1] == state and row[0].find(year) > - 1:
             dataset_to_use2.append(row)
 
+# extract positive diagnosis values
     for element in dataset_to_use2:
         x = int(element[4])
         return_list.append(x)
-
-    # print(dataset_to_use2)
-    # print("return_list: ", return_list)
-
-    # months = ['01', '02', '03', '04', '05',
-    #           '06', '07', '08', '09', '10', '11', '12']
-
-    # plt.bar(months, return_list)
-    # plt.title(f'Positive Test Case for State {state} in year {year}')
-    # plt.show()
 
     return return_list
     pass
@@ -70,25 +62,19 @@ def get_dp_histogram(dataset, state, year, epsilon, N):
     dataset_to_use = dataset.copy()
     dataset_to_use2 = []
     return_list = []
-    # print("state: ", state)
 
+# select values according to the given state and year values
     for row in dataset_to_use:
         if row[1] == state and row[0].find(year) > - 1:
             dataset_to_use2.append(row)
 
+# extract positive diagnosis values by adding the laplace noise
     for element in dataset_to_use2:
-        # print(element)
         noise = np.random.laplace(0, N/epsilon)
         x = int(element[4])
         x += noise
         return_list.append(x)
 
-    # months = ['01', '02', '03', '04', '05',
-    #           '06', '07', '08', '09', '10', '11', '12']
-
-    # plt.bar(months, return_list)
-    # plt.title(f'Positive Test Case for State {state} in year {year}')
-    # plt.show()
     return return_list
     pass
 
@@ -98,10 +84,12 @@ def calculate_average_error(actual_hist, noisy_hist):
 
     res = 0
 
+# find the absolute value difference of each bin
     differences = []
     for elem1, elem2 in zip(actual_hist, noisy_hist):
         differences.append(abs(elem1 - elem2))
 
+# take the average of the absolute value differences of each bin
     res = np.sum(differences) / len(actual_hist)
     return res
 
@@ -112,6 +100,8 @@ def calculate_average_error(actual_hist, noisy_hist):
 def epsilon_experiment(dataset, state, year, eps_values, N):
 
     res = []
+
+# for each epsilon value repeat 10 times: get actual and noisy histogram calculate avverage error and take average
     for epsilon in eps_values:
         res2 = []
         for i in range(10):
@@ -120,7 +110,6 @@ def epsilon_experiment(dataset, state, year, eps_values, N):
             res2.append(calculate_average_error(actual_hist, noisy_hist))
         res.append(np.average(res2))
 
-    # print(res)
     return res
     pass
 
@@ -128,6 +117,7 @@ def epsilon_experiment(dataset, state, year, eps_values, N):
 # TODO: Implement this function!
 def N_experiment(dataset, state, year, epsilon, N_values):
 
+    # same as the epsilon experiment. Here epsilon is fixed and N changes
     res = []
     for n in N_values:
         res2 = []
@@ -153,37 +143,31 @@ def max_deaths_exponential(dataset, state, year, epsilon):
     probabilites = []
     probabilites2 = []
 
+# select values according to the given state and year values
     for row in dataset_to_use:
         if row[1] == state and row[0].find(year) > - 1:
             dataset_to_use2.append(row)
 
+# select death values
     for element in dataset_to_use2:
         x = int(element[2])
         deaths.append(x)
 
-    # denumerator = np.sum(exp((epsilon * deaths)) / 2)
-
+# calculate probabilites of each month to be selected according to the exponential mechanism probablity
     for d in deaths:
         numerator = math.exp((epsilon * d) / 2)
         probabilites.append(numerator)
 
     denumerator = np.sum(probabilites)
-    # print("denumerator: ", denumerator)
 
     for p in probabilites:
         probabilites2.append(p / denumerator)
 
-    # np.random.choice
-
-    # print("deaths: ", deaths)
-    # print("probabilites: ", probabilites)
-    # print("probabilites2: ", probabilites2)
-
+# select and retrun one of the months according to the calculated probabilites
     months = ['01', '02', '03', '04', '05',
               '06', '07', '08', '09', '10', '11', '12']
 
-    x = random.choices(months, weights=probabilites2)[0]
-    # print("x: ", x)
+    x = np.random.choice(months, p=probabilites2)
 
     return x
 
@@ -237,7 +221,13 @@ def main():
     state = "TX"
     year = "2020"
 
-    a = max_deaths_exponential(dataset, "WY", year, 0.1)
+    # months = ['01', '02', '03', '04', '05',
+    #           '06', '07', '08', '09', '10', '11', '12']
+
+    # res = get_histogram(dataset,state,year)
+    # plt.bar(months, res)
+    # plt.title(f'Positive Test Case for State {state} in year {year}')
+    # plt.show()
 
     print("**** LAPLACE EXPERIMENT RESULTS ****")
     eps_values = [0.0001, 0.001, 0.005, 0.01, 0.05, 0.1, 1.0]
