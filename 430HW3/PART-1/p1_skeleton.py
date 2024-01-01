@@ -44,7 +44,6 @@ def attack_label_flipping(X_train, X_test, y_train, y_test, model_type, p):
     N = np.shape(X_train)[0]
     num_to_change = int(N * p)
 
-
     # print("N: ", N)
     # print("numtochange: ", num_to_change)
     # print("y_train: ", y_train)
@@ -111,7 +110,34 @@ def label_flipping_defense(X_train, y_train, p):
     """
     # TODO: You need to implement this function!
     # Perform the attack, then the defense, then print the outcome
-    print(f"Out of {0} flipped data points, {0} were correctly identified.")
+
+    N = np.shape(X_train)[0]
+    num_to_change = int(N * p)
+    detected_indexes = []
+
+    indexes_to_change = random.sample(range(0, N - 1), num_to_change)
+    y_train2 = y_train.copy()
+
+    for i in indexes_to_change:
+        y_train2[i] = 1 - y_train2[i]
+
+    lof = LocalOutlierFactor()
+    lof.fit(X_train)
+    y_pred = lof.fit_predict(X_train, y_train2)
+
+    # for i in indexes_to_change:
+    #     print("outlier_score: ", outlier_scores[i])
+
+    # x = outlier_scores.argsort()[:num_to_change]
+    # x.sort()
+
+    print("indexes_to_change: ", indexes_to_change)
+    print("y_pred: ", y_pred)
+
+    # print(y_train2)
+
+    print(
+        f"Out of {num_to_change} flipped data points, {0} were correctly identified.")
 
 
 ###############################################################################
@@ -130,9 +156,26 @@ def evade_model(trained_model, actual_example):
     """
     actual_class = trained_model.predict([actual_example])[0]
     modified_example = copy.deepcopy(actual_example)
-    # while pred_class == actual_class:
-    # do something to modify the instance
-    #    print("do something")
+    pred_class = trained_model.predict([modified_example])[0]
+
+    # print("actual_class: ", actual_class)
+    # print("pred_class: ", pred_class)
+    # print("actual_example: ", actual_example)
+    # print("modified_example: ", modified_example)
+
+    x = 0.0001
+    while pred_class == actual_class:
+        # # do something to modify the instance
+
+        if sum(modified_example) > 0:
+            for idx, a in enumerate(modified_example):
+                modified_example[idx] = a - x
+        elif sum(modified_example) < 0:
+            for idx, a in enumerate(modified_example):
+                modified_example[idx] = a + x
+        # print("modified_example: ", modified_example)
+        pred_class = trained_model.predict([modified_example])[0]
+        x += 0.001
 
     return modified_example
 
@@ -179,17 +222,45 @@ def evaluate_transferability(DTmodel, LRmodel, SVCmodel, actual_examples):
     # TODO: You need to implement this function!
     # Implementation of transferability evaluation
 
+    dt_LR = 0
+    dt_SVC = 0
+
+    lr_DT = 0
+    lr_SVC = 0
+
+    svc_DT = 0
+    svc_LR = 0
+
+    for i in actual_examples:
+        x = evade_model(DTmodel,i)
+        y = evade_model(LRmodel,i)
+        z = evade_model(SVCmodel,i)
+
+        if DTmodel.predict([x])[0] == LRmodel.predict([x])[0]:
+            dt_LR += 1
+        if DTmodel.predict([x])[0] == SVCmodel.predict([x])[0]:
+            dt_SVC += 1
+        if LRmodel.predict([y])[0] == DTmodel.predict([y])[0]:
+            lr_DT += 1
+        if LRmodel.predict([y])[0] == SVCmodel.predict([y])[0]:
+            lr_SVC += 1
+        if SVCmodel.predict([z])[0] == DTmodel.predict([z])[0]:
+            svc_DT += 1
+        if SVCmodel.predict([z])[0] == LRmodel.predict([z])[0]:
+            svc_LR += 1
+        
+
     print("Out of 40 adversarial examples crafted to evade DT :")
-    print(f"-> {0} of them transfer to LR.")
-    print(f"-> {0} of them transfer to SVC.")
+    print(f"-> {dt_LR} of them transfer to LR.")
+    print(f"-> {dt_SVC} of them transfer to SVC.")
 
     print("Out of 40 adversarial examples crafted to evade LR :")
-    print(f"-> {0} of them transfer to DT.")
-    print(f"-> {0} of them transfer to SVC.")
+    print(f"-> {lr_DT} of them transfer to DT.")
+    print(f"-> {lr_SVC} of them transfer to SVC.")
 
     print("Out of 40 adversarial examples crafted to evade SVC :")
-    print(f"-> {0} of them transfer to DT.")
-    print(f"-> {0} of them transfer to LR.")
+    print(f"-> {svc_DT} of them transfer to DT.")
+    print(f"-> {svc_LR} of them transfer to LR.")
 
 
 ###############################################################################
@@ -245,7 +316,7 @@ def main():
                 X_train, X_test, y_train, y_test, model_type, p)
             print("Accuracy of poisoned", model_type, str(p), ":", acc)
 
-    # # Label flipping defense executions:
+    # Label flipping defense executions:
     # print("#" * 50)
     # print("Label flipping defense executions:")
     # p_vals = [0.05, 0.10, 0.20, 0.40]
@@ -253,31 +324,31 @@ def main():
     #     print("Results with p=", str(p), ":")
     #     label_flipping_defense(X_train, y_train, p)
 
-    # # Evasion attack executions:
-    # print("#"*50)
-    # print("Evasion attack executions:")
-    # trained_models = [myDEC, myLR, mySVC]
-    # model_types = ["DT", "LR", "SVC"]
-    # num_examples = 40
-    # for a, trained_model in enumerate(trained_models):
-    #     total_perturb = 0.0
-    #     for i in range(num_examples):
-    #         actual_example = X_test[i]
-    #         adversarial_example = evade_model(trained_model, actual_example)
-    #         if trained_model.predict([actual_example])[0] == trained_model.predict([adversarial_example])[0]:
-    #             print("Evasion attack not successful! Check function: evade_model.")
-    #         perturbation_amount = calc_perturbation(
-    #             actual_example, adversarial_example)
-    #         total_perturb = total_perturb + perturbation_amount
-    #     print("Avg perturbation for evasion attack using",
-    #           model_types[a], ":", total_perturb / num_examples)
+    # Evasion attack executions:
+    print("#"*50)
+    print("Evasion attack executions:")
+    trained_models = [myDEC, myLR, mySVC]
+    model_types = ["DT", "LR", "SVC"]
+    num_examples = 40
+    for a, trained_model in enumerate(trained_models):
+        total_perturb = 0.0
+        for i in range(num_examples):
+            actual_example = X_test[i]
+            adversarial_example = evade_model(trained_model, actual_example)
+            if trained_model.predict([actual_example])[0] == trained_model.predict([adversarial_example])[0]:
+                print("Evasion attack not successful! Check function: evade_model.")
+            perturbation_amount = calc_perturbation(
+                actual_example, adversarial_example)
+            total_perturb = total_perturb + perturbation_amount
+        print("Avg perturbation for evasion attack using",
+              model_types[a], ":", total_perturb / num_examples)
 
-    # # Transferability of evasion attacks:
-    # print("#"*50)
-    # print("Transferability of evasion attacks:")
-    # trained_models = [myDEC, myLR, mySVC]
-    # num_examples = 40
-    # evaluate_transferability(myDEC, myLR, mySVC, X_test[0:num_examples])
+    # Transferability of evasion attacks:
+    print("#"*50)
+    print("Transferability of evasion attacks:")
+    trained_models = [myDEC, myLR, mySVC]
+    num_examples = 40
+    evaluate_transferability(myDEC, myLR, mySVC, X_test[0:num_examples])
 
 
 if __name__ == "__main__":
